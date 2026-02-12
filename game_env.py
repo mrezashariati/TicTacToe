@@ -1,16 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Literal, List, Callable, Any, Tuple
+from typing import Literal, List, Callable, Any, Tuple, Dict
 import numpy as np
 from itertools import product
 from tqdm import tqdm
 import os
 import pickle
-from learning import MonteCarloEstimation
+from learning import MonteCarloEstimation, State, Action, Reward, ReplayBuffer
+from utils import get_board_variations
 
 
 @dataclass
 class Player:
-    name: str
     mark: Literal["O", "X"]
     policy_type: Literal["manual", "RL"]
     # The policy is a function, which takes in a game state and outputs an action.
@@ -61,9 +61,17 @@ class Board:
     finished: bool = False
     _winner: str | None = None
     _number_to_mark = {0: "-", 1: "O", 2: "X"}
+    _mark_to_number: Dict[str, int] = field(init=False)
 
     def __post_init__(self):
         self.players.sort(key=lambda x: 0 if x.mark == "X" else 1)
+        self._mark_to_number = {v: k for k, v in self._number_to_mark.items()}
+
+    def get_reward(self, state: State, action: Action, mark: str) -> Reward:
+        new_state_array = state.s.copy()
+        new_state_array[action.a] = self._mark_to_number[mark]
+
+        return Reward(1.0) if self._is_terminal(new_state_array) else Reward(0.0)
 
     @staticmethod
     def compute_all_valid_states():
@@ -83,13 +91,7 @@ class Board:
                 if len(states) == 0:
                     states.append(new_state)
                     continue
-                variations = [
-                    np.flip(new_state, axis=0),  # horizontal flip
-                    np.flip(new_state, axis=1),  # vertical flip
-                    *[np.rot90(new_state, i) for i in range(1, 4)],  # rotations
-                    new_state.T,  # diagonal mirror
-                    np.rot90(new_state, k=2).T,  # diagonal mirror
-                ]
+                variations = get_board_variations(new_state)
                 if not np.any(
                     [np.array_equal(v, arr) for v in variations for arr in states]
                 ):
@@ -117,7 +119,7 @@ class Board:
             return states
 
     @staticmethod
-    def is_terminal(positions: np.ndarray) -> Tuple[bool, str | None]:
+    def _is_terminal(positions: np.ndarray) -> Tuple[bool, str | None]:
         # TODO: simplify this
         sequences = [
             list(range(0, 3, 1)),
@@ -163,7 +165,7 @@ class Board:
             self.turn = int(not bool(self.turn))
             print(f"player {self.players[self.turn].mark}'s turn:")
             self.pretty_print_board()
-            self.finished, self._winner = self.is_terminal(self._positions)
+            self.finished, self._winner = self._is_terminal(self._positions)
             if self.finished:
                 print(
                     "Game finished. The winner:",

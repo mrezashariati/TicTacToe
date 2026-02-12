@@ -5,6 +5,8 @@ from typing import List, Tuple, Dict, Any
 import numpy as np
 from numpy.typing import NDArray
 import random
+from collections import defaultdict
+from utils import get_board_variations
 
 np.random.seed(42)
 random.seed(42)
@@ -20,7 +22,7 @@ class State:
 
     def __eq__(self, other) -> bool:
         if isinstance(other, State):
-            return all(self.s == other.s)
+            return bool(np.all(self.s == other.s))
 
         return False
 
@@ -53,7 +55,7 @@ class ReplayBuffer:
 class MonteCarloEstimation:
     raw_states: InitVar[List[NDArray[np.float16]]]
     # All valid states of the XO
-    states: List[State] = field(init=False)
+    states: Dict[Tuple[np.intp, np.intp], List[State]] = field(init=False)
 
     # an action is putting the mark on a position of the table. For XO, we have 9 positions, hence 9 actions.
     # not all actions are valid for a particular state
@@ -61,21 +63,34 @@ class MonteCarloEstimation:
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
     discount_factor = 0.9
 
-    def __post_init__(self, raw_states):
-
-        self.states = [State(s.reshape(-1)) for s in raw_states]
+    def __post_init__(self, raw_states: List[NDArray[Any]]):
+        self.states = defaultdict(list)
+        for s in raw_states:
+            xcount = np.count_nonzero(s == 2)
+            ocount = np.count_nonzero(s == 1)
+            self.states[(xcount, ocount)].append(State(s))
 
         # Init the Q values. The row is state index and column is action index
         self.Q_values = {
-            (s, a): np.random.random() for s in self.states for a in self.actions
+            (s, a): np.random.random()
+            for v in self.states.values()
+            for s in v
+            for a in self.actions
         }
 
-        print(
-            f"number of actions: {len(self.actions)}, number of states: {len(self.states)}, number (state,action)s: {len(self.Q_values)}"
-        )
-
     def find_state(self, s: State) -> State | None:
-        pass
+        xcount = np.count_nonzero(s.s == 2)
+        ocount = np.count_nonzero(s.s == 1)
+        candidate_states = self.states[(xcount, ocount)]
+        board_variations = get_board_variations(s.s, include_self=True)
+
+        # search for board variations in candidate states:
+        for b in board_variations:
+            for c in candidate_states:
+                if State(b) == c:
+                    return c
+
+        return None
 
     # This computes discounted sum of future rewards.
     def discounted_return(self, rewards):
@@ -86,18 +101,23 @@ class MonteCarloEstimation:
         pass
 
     def __call__(self, state_array: NDArray[Any]) -> Action:
-        # return the best action based on the Q-values stored
-        state = State(state_array.astype(int))  # type: ignore
-        # TODO: the state is not in canonical form and only an equivalant state maybe in the states list. Make sure you find it
+        """returns the best action based on the Q-values stored"""
+
+        state = State(state_array.reshape(3, 3).astype(int))  # type: ignore
+
+        # find the canonical form of the state
+        canonical_state = self.find_state(state)
+
+        if canonical_state is None:
+            raise Exception("couldn't find the state, it shouldn't be missing :/")
+
+        possible_actions = [
+            a for a in self.actions if state_array.reshape(-1)[a.a] == 0
+        ]
+
         best_action_value = -float("inf")
         best_action = None
-        for a in self.actions:
-            if self.Q_values[(state, a)] > best_action_value:
+        for a in possible_actions:
+            if self.Q_values[(canonical_state, a)] > best_action_value:
                 best_action = a
         return best_action.a  # type: ignore
-
-
-# This class does the self play and sample generation. It can be used for any game with two players
-@dataclass
-class SelfPlay:
-    n_episodes: int

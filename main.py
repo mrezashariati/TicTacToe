@@ -1,10 +1,10 @@
-from entities import Board, Player
+from game_env import Board, Player
 
 
 def main():
     # Players ready!
-    xplayer = Player(name="immo", mark="X", policy_type="manual")
-    oplayer = Player(name="rockx", mark="O", policy_type="RL")
+    xplayer = Player(mark="X", policy_type="manual")
+    oplayer = Player(mark="O", policy_type="RL")
     board = Board(players=[oplayer, xplayer])
     print("Game setup complete.")
     print("Now I'll be commentating the game XOXO")
