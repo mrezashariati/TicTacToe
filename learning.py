@@ -7,38 +7,10 @@ from numpy.typing import NDArray
 import random
 from collections import defaultdict
 from utils import get_board_variations
+from entities import State, Action
 
 np.random.seed(42)
 random.seed(42)
-
-
-# State and Action space of TicTacToe
-@dataclass
-class State:
-    s: NDArray[np.int16]
-
-    def __hash__(self) -> int:
-        return hash("".join(map(str, self.s.tolist())))
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, State):
-            return bool(np.all(self.s == other.s))
-
-        return False
-
-
-@dataclass
-class Action:
-    a: int
-
-    def __hash__(self) -> int:
-        return hash(str(self.a))
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, Action):
-            return self.a == other.a
-
-        return False
 
 
 @dataclass
@@ -59,7 +31,7 @@ class MonteCarloEstimation:
 
     # an action is putting the mark on a position of the table. For XO, we have 9 positions, hence 9 actions.
     # not all actions are valid for a particular state
-    actions: List[Action] = field(default_factory=lambda: [Action(i) for i in range(9)])
+    actions: List[Action]
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
     discount_factor = 0.9
 
@@ -71,6 +43,7 @@ class MonteCarloEstimation:
             self.states[(xcount, ocount)].append(State(s))
 
         # Init the Q values. The row is state index and column is action index
+        # TODO: This nested loop seems nasty brooo
         self.Q_values = {
             (s, a): np.random.random()
             for v in self.states.values()
@@ -100,10 +73,10 @@ class MonteCarloEstimation:
         # iterate over the replay buffer and update Q values
         pass
 
-    def __call__(self, state_array: NDArray[Any]) -> Action:
+    def __call__(self, state: State) -> Action:
         """returns the best action based on the Q-values stored"""
 
-        state = State(state_array.reshape(3, 3).astype(int))  # type: ignore
+        state = State(state.s.reshape(3, 3).astype(int))  # type: ignore
 
         # find the canonical form of the state
         canonical_state = self.find_state(state)
@@ -111,13 +84,11 @@ class MonteCarloEstimation:
         if canonical_state is None:
             raise Exception("couldn't find the state, it shouldn't be missing :/")
 
-        possible_actions = [
-            a for a in self.actions if state_array.reshape(-1)[a.a] == 0
-        ]
+        possible_actions = [a for a in self.actions if state.s.reshape(-1)[a.pos] == 0]
 
         best_action_value = -float("inf")
         best_action = None
         for a in possible_actions:
             if self.Q_values[(canonical_state, a)] > best_action_value:
                 best_action = a
-        return best_action.a  # type: ignore
+        return best_action  # type: ignore
