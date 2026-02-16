@@ -2,6 +2,9 @@ import numpy as np
 
 
 def get_board_variations(board, include_self=False):
+    if board.shape != (3, 3):
+        board = board.reshape(3, 3)
+        
     variations = [
         np.flip(board, axis=0),  # horizontal flip
         np.flip(board, axis=1),  # vertical flip
@@ -11,5 +14,5 @@ def get_board_variations(board, include_self=False):
     ]
     if include_self:
         variations.append(board)
-    
+
     return variations

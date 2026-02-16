@@ -8,6 +8,7 @@ import pickle
 from learning import MonteCarloEstimation, Reward, ReplayBuffer
 from utils import get_board_variations
 from entities import State, Action
+import logging
 
 
 @dataclass
@@ -56,6 +57,13 @@ class Player:
         # Pick the position to put the mark
         return self._policy(game_state)  # pyright: ignore[reportOptionalCall]
 
+    def learn(self, data: ReplayBuffer) -> None:
+        if self.policy_type in ["manual", "random"]:
+            raise Exception(f"cannot learn with policy {self.policy_type}")
+
+        self._policy.estimate_qvalues(data, self.mark)
+        return
+
 
 @dataclass
 class Board:
@@ -69,7 +77,6 @@ class Board:
     _winner: str | None = None
     _number_to_mark = {0: "-", 1: "O", 2: "X"}
     _mark_to_number: Dict[str, int] = field(init=False)
-    do_log: bool = False
 
     def __post_init__(self):
         self._mark_to_number = {v: k for k, v in self._number_to_mark.items()}
@@ -118,15 +125,15 @@ class Board:
     @staticmethod
     def load_all_valid_states():
         if os.path.exists("all_valid_states.pkl"):
-            print("Saved states found. Loading...")
+            logging.info("Saved states found. Loading...")
             with open("all_valid_states.pkl", "rb") as f:
                 states = pickle.load(f)
             return states
         else:
-            print("No saved states. Computing...")
+            logging.info("No saved states. Computing...")
             states = Board.compute_all_valid_states()
             Board.save_all_valid_states(states)
-            print("Saved all valid states")
+            logging.info("Saved all valid states")
             return states
 
     @staticmethod
@@ -165,7 +172,7 @@ class Board:
         for k in self._number_to_mark:
             display_board[np.where(display_board == str(k))] = self._number_to_mark[k]
         for r in display_board:
-            print("|".join(list(r)))
+            logging.info("|".join(list(r)))
 
     def step(self, action: Action) -> Reward:
         # upack the action
@@ -176,14 +183,9 @@ class Board:
             reward = self.get_reward(self.get_game_state(), action)
             # carry out the action
             self._positions[pos] = 1 if mark == "O" else 2
-            print(f"Action carried out. Next player turn.")
-            self.pretty_print_board()
+            # self.pretty_print_board()
             self.finished, self._winner = self.is_terminal(self.get_game_state())
-            if self.finished:
-                print(
-                    "Game finished. The winner:",
-                    self._winner if self._winner else "Neither. Its an equal.",
-                )
+
             return reward
         else:
             raise Exception("game already finished. cannot make any more moves")
