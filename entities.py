@@ -9,6 +9,11 @@ from dataclasses import dataclass
 class State:
     s: NDArray[np.int16]
 
+    @classmethod
+    def flat(cls, instance):
+        # returns a new instance of the state, the only difference is that the array s is flattened.
+        return cls(instance.s.reshape(-1).copy())
+
     def __hash__(self) -> int:
         return hash("".join(map(str, self.s.tolist())))
 

@@ -76,7 +76,7 @@ def get_state_coverage(player: Player, return_sample=False, sample_size=10):
     # TODO: This is not nice, states shouldn't be nested
     for ss in p.states.values():
         for s in ss:
-            is_terminal, _ = Board.is_terminal(s)
+            is_terminal = Board.is_terminal(s)
             if is_terminal:
                 continue
 

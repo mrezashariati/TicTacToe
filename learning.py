@@ -29,7 +29,7 @@ class ReplayBuffer:
 @dataclass
 class MonteCarloEstimation:
     raw_states: InitVar[List[NDArray[np.float16]]]
-    # All valid states of the XO
+    # All valid states of the XO. The state's board's shape is (3, 3)
     states: Dict[Tuple[np.intp, np.intp], List[State]] = field(init=False)
 
     # an action is putting the mark on a position of the table. For XO, we have 9 positions, hence 9 actions.

@@ -99,7 +99,8 @@ class Board:
     def get_reward(self, state: State, action: Action) -> Reward:
         new_state_array = state.copy()
         new_state_array.s[action.pos] = self._mark_to_number[action.mark]
-        f, w = self.is_terminal(new_state_array)
+        f = self.is_terminal(new_state_array)
+        w = self.get_winner(new_state_array)
         if f and not w == None:
             reward = Reward(1.0)
         else:
@@ -152,13 +153,37 @@ class Board:
             return states
 
     @staticmethod
-    def is_terminal(state: State) -> Tuple[bool, str | None]:
+    def get_winner(state: State) -> str | None:
+        # this function is implemented very much the is_terminal func.
+        # it only returns the winner if exists.
+
+        flat_state = State.flat(state)
+
+        # TODO: simplify this. Priority: low
+        sequences = [
+            list(range(0, 3, 1)),
+            list(range(3, 6, 1)),
+            list(range(6, 9, 1)),
+            list(range(0, 7, 3)),
+            list(range(1, 8, 3)),
+            list(range(2, 9, 3)),
+            list(range(0, 9, 4)),
+            list(range(2, 7, 2)),
+        ]
+        for seq in sequences:
+            if all(flat_state.s[seq] == 1):
+                return "O"
+            elif all(flat_state.s[seq] == 2):
+                return "X"
+
+        return
+
+    @staticmethod
+    def is_terminal(state: State) -> bool:
+
+        flat_state = State.flat(state)
+
         # TODO: simplify this
-        # TODO: don't return the winner. This function only sees if the game state is terminal or not.
-
-        # TODO: this is not nice
-        new_state = State(s=state.s.reshape(-1).copy())
-
         sequences = [
             list(range(0, 3, 1)),
             list(range(3, 6, 1)),
@@ -170,19 +195,14 @@ class Board:
             list(range(2, 7, 2)),
         ]
         finished = False
-        winner = None
         for seq in sequences:
-            if all(new_state.s[seq] == 1):
-                finished = True
-                winner = "O"
-                return finished, winner
-            elif all(new_state.s[seq] == 2):
-                finished = True
-                winner = "X"
-                return finished, winner
+            if all(flat_state.s[seq] == 1):
+                return True
+            elif all(flat_state.s[seq] == 2):
+                return True
 
-        finished = not np.any(new_state.s == 0)
-        return finished, winner
+        finished = not np.any(flat_state.s == 0)
+        return finished
 
     def get_game_state(self) -> State:
         return State(s=self._positions.copy())
@@ -204,7 +224,8 @@ class Board:
             # carry out the action
             self._positions[pos] = 1 if mark == "O" else 2
             # self.pretty_print_board()
-            self.finished, self._winner = self.is_terminal(self.get_game_state())
+            self.finished = self.is_terminal(self.get_game_state())
+            self._winner = self.get_winner(self.get_game_state())
 
             return reward
         else:
