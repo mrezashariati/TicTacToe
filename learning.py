@@ -36,9 +36,10 @@ class MonteCarloEstimation:
     # not all actions are valid for a particular state
     actions: List[Action]
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
-    discount_factor = 0.95
-    learning_rate = 0.05
-    epsilon = 0.85
+    discount_factor = 0.1
+    learning_rate = 0.8
+    epsilon = 0.60
+    eval_mode: bool = False
 
     def __post_init__(self, raw_states: List[NDArray[Any]]):
         self.states = defaultdict(list)
@@ -50,11 +51,16 @@ class MonteCarloEstimation:
         # Init the Q values. The row is state index and column is action index
         # TODO: This nested loop seems nasty brooo
         self.Q_values = {
-            (s, a): np.random.random()
-            for v in self.states.values()
-            for s in v
-            for a in self.actions
+            (s, a): 0.0 for v in self.states.values() for s in v for a in self.actions
         }
+
+    def eval(self):
+        # eval mode disables epsilon-greedy. Only greedy behaviour.
+        self.eval_mode = True
+
+    def train(self):
+        # train mode enables epsilon-greedy behaviour.
+        self.eval_mode = False
 
     def find_state(self, s: State) -> State | None:
         xcount = np.count_nonzero(s.s == 2)
@@ -98,12 +104,18 @@ class MonteCarloEstimation:
                     q_estimate - q_oldval
                 )
 
+    def get_state_values(self, state: State) -> List[Tuple[float, Action]]:
+        canonical_state = self.find_state(state)
+        assert canonical_state, "couldn't find the canonical state. Thats not good bro."
+        values = [self.Q_values[(canonical_state, a)] for a in self.actions]
+        return list(zip(values, self.actions))
+
     def __call__(self, state: State) -> Action:
         """returns the best action based on the Q-values stored with 1-epsilon probability"""
         possible_actions = [a for a in self.actions if state.s.reshape(-1)[a.pos] == 0]
 
-        # epsilon-greedy
-        if np.random.rand() > self.epsilon:
+        # epsilon-greedy. Take random action with 1-epsilon prob if in train mode
+        if not self.eval_mode and np.random.rand() > self.epsilon:
             return possible_actions[np.random.choice(np.arange(len(possible_actions)))]
 
         state = State(state.s.reshape(3, 3).astype(int))  # type: ignore

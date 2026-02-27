@@ -14,7 +14,7 @@ import logging
 @dataclass
 class Player:
     mark: Literal["O", "X"]
-    policy_type: Literal["manual", "RL", "random"]
+    policy_type: Literal["manual", "rl", "random", "gfi"]
     possible_actions: List[Action] = field(init=False)
 
     # The policy is a function, which takes in a game state and outputs an action.
@@ -33,21 +33,26 @@ class Player:
             pos = int(input(f"choose the position. options: {empty_states} "))
             return Action(pos=pos, mark=self.mark)
 
-        if self.policy_type == "manual":
-            return manual_policy
+        def go_for_it_policy(game_state: State):
+            # in this policy the player just goes for it. The first free line it sees, it starts putting marks on
+            pass
 
-        elif self.policy_type == "random":
-            return random_policy
-
-        elif self.policy_type == "RL":
-            # TODO: I need to pass to the learning Algo the possbile actions in the game
-            return MonteCarloEstimation(
-                raw_states=Board.load_all_valid_states(), actions=self.possible_actions
-            )
-        else:
-            raise Exception(
-                f"The defined policy doesn't exist. Pick from {['manual', 'random', 'RL']}"
-            )
+        match self.policy_type:
+            case "manual":
+                return manual_policy
+            case "random":
+                return random_policy
+            case "rl":
+                return MonteCarloEstimation(
+                    raw_states=Board.load_all_valid_states(),
+                    actions=self.possible_actions,
+                )
+            case "gfi":
+                return go_for_it_policy
+            case _:
+                raise Exception(
+                    f"The defined policy doesn't exist. Pick from {['manual', 'random', 'rl']}"
+                )
 
     def __post_init__(self):
         self.possible_actions = [Action(i, self.mark) for i in range(9)]
@@ -63,6 +68,16 @@ class Player:
 
         self._policy.estimate_qvalues(data, self.mark)
         return
+
+    def eval(self):
+        # only the players with RL policy can enable eval mode
+        if self.policy_type == "rl":
+            self._policy.eval()
+
+    def train(self):
+        # only the players with RL policy can enable train mode
+        if self.policy_type == "rl":
+            self._policy.train()
 
 
 @dataclass
@@ -139,6 +154,11 @@ class Board:
     @staticmethod
     def is_terminal(state: State) -> Tuple[bool, str | None]:
         # TODO: simplify this
+        # TODO: don't return the winner. This function only sees if the game state is terminal or not.
+
+        # TODO: this is not nice
+        new_state = State(s=state.s.reshape(-1).copy())
+
         sequences = [
             list(range(0, 3, 1)),
             list(range(3, 6, 1)),
@@ -152,16 +172,16 @@ class Board:
         finished = False
         winner = None
         for seq in sequences:
-            if all(state.s[seq] == 1):
+            if all(new_state.s[seq] == 1):
                 finished = True
                 winner = "O"
                 return finished, winner
-            elif all(state.s[seq] == 2):
+            elif all(new_state.s[seq] == 2):
                 finished = True
                 winner = "X"
                 return finished, winner
 
-        finished = not np.any(state.s == 0)
+        finished = not np.any(new_state.s == 0)
         return finished, winner
 
     def get_game_state(self) -> State:
@@ -193,19 +213,23 @@ class Board:
 
 @dataclass
 class GameRunner:
-    episodes: int
-    env: Board
+    num_episodes: int
+    env: Any  # TODO: what is the type here?
     players: List[Player]
+    _winners: List[str] = field(default_factory=list)
+    _episodes: ReplayBuffer = field(init=False)
 
     def __post_init__(self):
         # this is not generalizable. TicTacToe always starts with X
         self.players.sort(key=lambda x: 0 if x.mark == "X" else 1)
+        for player in self.players:
+            player.train()
 
-    def run(self) -> ReplayBuffer:
+    def run(self) -> None:
         game_episodes = []
-        for _ in range(self.episodes):
+        for _ in range(self.num_episodes):
             # initiate a new game
-            game = Board()
+            game = self.env()
             turn = self.players[0]
             new_episode = []
             while not game.finished:
@@ -224,6 +248,16 @@ class GameRunner:
                 # log
                 new_episode.append((state, action, reward))
 
+            winner = game._winner if game._winner else "D"
+            self._winners.append(winner)
             game_episodes.append(new_episode)
 
-        return ReplayBuffer(game_episodes)
+        self._episodes = ReplayBuffer(game_episodes)
+
+        return
+
+    def get_generated_episodes(self):
+        return self._episodes
+
+    def get_winners(self):
+        return self._winners

@@ -21,6 +21,14 @@ class State:
     def copy(self):
         return State(self.s.copy())
 
+    def whos_turn(self):
+        xcount = np.count_nonzero(self.s == 2)
+        ocount = np.count_nonzero(self.s == 1)
+        return 2 if xcount == ocount else 1
+
+    def __str__(self):
+        return f"State(s=\n{str(self.s)})"
+
 
 @dataclass
 # This class is specific to TicTacToe game
