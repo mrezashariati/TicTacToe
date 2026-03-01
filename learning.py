@@ -49,7 +49,7 @@ class MonteCarloEstimation:
             self.states[(xcount, ocount)].append(State(s))
 
         # Init the Q values. The row is state index and column is action index
-        # TODO: This nested loop seems nasty brooo
+        # TODO: This nested loop seems nasty. Priority: medium
         self.Q_values = {
             (s, a): 0.0 for v in self.states.values() for s in v for a in self.actions
         }
@@ -75,6 +75,14 @@ class MonteCarloEstimation:
                     return c
 
         return None
+
+    def get_all_states(self) -> List[State]:
+        all_states_flat = []
+        for s_list in self.states.values():
+            for s in s_list:
+                all_states_flat.append(s)
+
+        return all_states_flat
 
     # This computes discounted sum of future rewards.
     def discounted_return(self, rewards):

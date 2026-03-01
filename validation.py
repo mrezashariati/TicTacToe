@@ -73,23 +73,22 @@ def get_state_coverage(player: Player, return_sample=False, sample_size=10):
     p = player._policy  # type: ignore
     zero_states = []
     n_valid_states = 0
-    # TODO: This is not nice, states shouldn't be nested
-    for ss in p.states.values():
-        for s in ss:
-            is_terminal = Board.is_terminal(s)
-            if is_terminal:
-                continue
 
-            turn = s.whos_turn()
-            # TODO: this is ugly bro, there should be a better mapping here between player mark and turn
-            if (turn == 2 and player.mark == "O") or (turn == 1 and player.mark == "X"):
-                continue
+    for s in p.get_all_states():
+        if Board.is_terminal(s):
+            continue
 
-            values = [v[0] for v in p.get_state_values(s)]
-            all_zero = np.all(np.array(values) == 0.0)
-            if all_zero:
-                zero_states.append(s)
-            n_valid_states += 1
+        turn = s.whos_turn()
+
+        # check if the state's player's turn matches the mark of the target player
+        if Board._mark_to_number[player.mark] != turn:
+            continue
+
+        values = [v[0] for v in p.get_state_values(s)]
+        all_zero = np.all(np.array(values) == 0.0)
+        if all_zero:
+            zero_states.append(s)
+        n_valid_states += 1
 
     sample = None
     if return_sample:

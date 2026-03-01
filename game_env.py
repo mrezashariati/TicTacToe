@@ -82,7 +82,7 @@ class Player:
 
 @dataclass
 class Board:
-    # TODO: there is no turn here, so it is better to have a restriction on possible actions.
+    # TODO: there is no turn here, so it is better to have a restriction on possible actions. Priority: low
     _positions: np.ndarray = field(
         default_factory=lambda: np.zeros(
             9,
@@ -91,10 +91,10 @@ class Board:
     finished: bool = False
     _winner: str | None = None
     _number_to_mark = {0: "-", 1: "O", 2: "X"}
-    _mark_to_number: Dict[str, int] = field(init=False)
+    _mark_to_number = {"-": 0, "O": 1, "X": 2}
 
     def __post_init__(self):
-        self._mark_to_number = {v: k for k, v in self._number_to_mark.items()}
+        pass
 
     def get_reward(self, state: State, action: Action) -> Reward:
         new_state_array = state.copy()
@@ -113,7 +113,7 @@ class Board:
         all_states = product([0, 1, 2], repeat=9)
         # TODO: an idea to improve the performance here is to save the states in a canonical form.
         # so when checking for the variations of the new state, first make it canonical and then
-        # check for it in previous states.
+        # check for it in previous states. Priority: Medium
         states = []
         for s in tqdm(list(all_states)):
             xcount = s.count(2)
@@ -183,7 +183,7 @@ class Board:
 
         flat_state = State.flat(state)
 
-        # TODO: simplify this
+        # TODO: simplify this. Priority: Low
         sequences = [
             list(range(0, 3, 1)),
             list(range(3, 6, 1)),

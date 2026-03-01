@@ -26,7 +26,7 @@ def main():
     for _ in range(2):
         # Generate episodes
         logging.info(f"generating game episodes...")
-        runner = GameRunner(num_episodes=2_500, env=Board, players=[xplayer, oplayer])
+        runner = GameRunner(num_episodes=2, env=Board, players=[xplayer, oplayer])
         runner.run()
         episodes = runner.get_generated_episodes()
 
@@ -42,7 +42,7 @@ def main():
 
     state_coverage, _ = get_state_coverage(oplayer)
     print(
-        f"ratio of non-terminal states that has been updated atleast once {state_coverage*100:.2f}%",
+        f"ratio of non-terminal states that has been updated atleast once (state coverage) {state_coverage*100:.2f}%",
     )
 
 
