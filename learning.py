@@ -20,7 +20,7 @@ class Reward:
 
 @dataclass
 class ReplayBuffer:
-    buffer: List[List[Tuple[State, Action, Reward]]]
+    buffer: List[List[Tuple[State, Action, Dict[str, Reward]]]]
 
     def __len__(self):
         return len(self.buffer)
@@ -36,9 +36,9 @@ class MonteCarloEstimation:
     # not all actions are valid for a particular state
     actions: List[Action]
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
-    discount_factor = 0.1
-    learning_rate = 0.8
-    epsilon = 0.60
+    discount_factor = 0.99
+    learning_rate = 0.5
+    epsilon = 0.7
     eval_mode: bool = False
 
     def __post_init__(self, raw_states: List[NDArray[Any]]):
@@ -84,22 +84,19 @@ class MonteCarloEstimation:
 
         return all_states_flat
 
-    # This computes discounted sum of future rewards.
     def discounted_return(self, rewards):
+        # This computes discounted sum of future rewards.
         return sum([self.discount_factor**i * r for i, r in enumerate(rewards)])
 
     def estimate_qvalues(self, buffer: ReplayBuffer, player_mark) -> None:
         # iterate over the replay buffer and update Q values
-        # only take into account actions taken by this player (X or O)
 
         for e in buffer.buffer:
             for i, (s, a, _) in enumerate(e):
                 if a.mark != player_mark:
                     continue
 
-                future_rewards = [
-                    rt.r for (_, at, rt) in e[i:] if at.mark == player_mark
-                ]
+                future_rewards = [rt[player_mark].r for (_, _, rt) in e[i:]]
                 q_estimate = self.discounted_return(future_rewards)
 
                 canonical_state = self.find_state(s)
@@ -139,4 +136,6 @@ class MonteCarloEstimation:
         for a in possible_actions:
             if self.Q_values[(canonical_state, a)] > best_action_value:
                 best_action = a
+                best_action_value = self.Q_values[(canonical_state, a)]
+
         return best_action  # type: ignore

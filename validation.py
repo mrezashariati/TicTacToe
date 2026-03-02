@@ -3,6 +3,8 @@ from game_env import Board, Player
 from learning import MonteCarloEstimation
 from entities import State
 import numpy as np
+from collections import defaultdict
+from typing import List
 
 
 def lets_play(xplayer: Player, oplayer: Player):
@@ -32,6 +34,9 @@ def lets_play(xplayer: Player, oplayer: Player):
         f"Game finished. The winner: {board._winner if board._winner else 'Neither. Its an equal.'}",
     )
 
+    xplayer.train()
+    oplayer.train()
+
 
 def compare_with_random(player: Player, episodes=100):
     # random vs random: [D: 12.776, O: 28.654, X: 58.57]
@@ -58,6 +63,8 @@ def compare_with_random(player: Player, episodes=100):
 
         winner = board._winner if board._winner else "D"
         winners.append(winner)
+
+    player.train()
 
     values, counts = np.unique_counts(np.array(winners))
     return values.tolist(), np.round(counts / sum(counts) * 100, 2).tolist()
@@ -102,4 +109,32 @@ def get_score_distribution_across_actions(player: Player):
         player.policy_type == "rl"
     ), "score distribution across actions is only valid for rl players with state,action value estimations"
 
-    raise NotImplementedError
+    p = player._policy
+    action_values = defaultdict(list)
+    for (s, a), v in p.Q_values.items():
+        if Board.is_terminal(s) or Board._mark_to_number[player.mark] != s.whos_turn():
+            # This will have zero values for all actions. Skipping zeros
+            continue
+
+        action_values[a].append(v)
+
+    action_stats = {
+        a.pos: (
+            float(round(np.quantile(action_values[a], 0.25), 2)),
+            float(round(np.median(action_values[a]), 2)),
+            float(round(np.quantile(action_values[a], 0.75), 2)),
+            float(round(np.mean(action_values[a]), 2)),
+        )
+        for a in action_values.keys()
+    }
+    return action_stats
+
+
+def get_state_values(player: Player, s: State) -> List[float]:
+    assert (
+        player.policy_type == "rl"
+    ), "score distribution across actions is only valid for rl players with state,action value estimations"
+
+    p = player._policy
+    s = p.find_state(s)
+    return [p.Q_values[(s, a)] for a in p.actions]

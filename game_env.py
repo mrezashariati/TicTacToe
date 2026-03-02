@@ -96,16 +96,25 @@ class Board:
     def __post_init__(self):
         pass
 
-    def get_reward(self, state: State, action: Action) -> Reward:
+    def get_reward(self, state: State, action: Action) -> Dict[str, Reward]:
+        # Here, the reward is decoupled from the action of each player.
+        # Meaning, the reward can come in any time/step of the game. For this reason.
+        # For this reason, one player can do nothing and still get a reward.
+        # For example, when the opponent does a move and wins the game, the player gets a -1 reward.
+
         new_state_array = state.copy()
         new_state_array.s[action.pos] = self._mark_to_number[action.mark]
+
         f = self.is_terminal(new_state_array)
         w = self.get_winner(new_state_array)
-        if f and not w == None:
-            reward = Reward(1.0)
-        else:
-            reward = Reward(0.0)
-        return reward
+
+        rewards = {"O": Reward(0.0), "X": Reward(0.0)}
+        if f and w == "X":
+            rewards["X"], rewards["O"] = Reward(1.0), Reward(-1.0)
+        elif f and w == "O":
+            rewards["O"], rewards["X"] = Reward(1.0), Reward(-1.0)
+
+        return rewards
 
     @staticmethod
     def compute_all_valid_states():
@@ -214,20 +223,20 @@ class Board:
         for r in display_board:
             logging.info("|".join(list(r)))
 
-    def step(self, action: Action) -> Reward:
+    def step(self, action: Action) -> Dict[str, Reward]:
         # upack the action
         pos, mark = action.pos, action.mark
         assert not self._positions[pos] != 0, f"Action not possbile {action}"
         if not self.finished:
             # get the reward of the action in current state
-            reward = self.get_reward(self.get_game_state(), action)
+            rewards = self.get_reward(self.get_game_state(), action)
             # carry out the action
             self._positions[pos] = 1 if mark == "O" else 2
             # self.pretty_print_board()
             self.finished = self.is_terminal(self.get_game_state())
             self._winner = self.get_winner(self.get_game_state())
 
-            return reward
+            return rewards
         else:
             raise Exception("game already finished. cannot make any more moves")
 
@@ -243,6 +252,7 @@ class GameRunner:
     def __post_init__(self):
         # this is not generalizable. TicTacToe always starts with X
         self.players.sort(key=lambda x: 0 if x.mark == "X" else 1)
+        # put all players in train mode
         for player in self.players:
             player.train()
 
@@ -261,13 +271,13 @@ class GameRunner:
                 action = turn.play(state)
 
                 # get the reward for current (state, action) and carry out the action
-                reward = game.step(action)
+                rewards = game.step(action)
 
                 # change the turn
                 turn = self.players[0] if turn != self.players[0] else self.players[1]
 
                 # log
-                new_episode.append((state, action, reward))
+                new_episode.append((state, action, rewards))
 
             winner = game._winner if game._winner else "D"
             self._winners.append(winner)

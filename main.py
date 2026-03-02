@@ -2,12 +2,13 @@ from game_env import Board, Player, GameRunner
 import logging
 from argparse import ArgumentParser
 import numpy as np
-from validation import compare_with_random, get_state_coverage, lets_play
-import time
-
-# dev:
-from learning import MonteCarloEstimation
-from entities import State
+from validation import (
+    compare_with_random,
+    get_state_coverage,
+    lets_play,
+    get_score_distribution_across_actions,
+    get_state_values,
+)
 
 
 def main():
@@ -23,12 +24,18 @@ def main():
     xplayer = Player(mark="X", policy_type="random")
     oplayer = Player(mark="O", policy_type="rl")
 
-    for _ in range(2):
+    for _ in range(10):
         # Generate episodes
         logging.info(f"generating game episodes...")
-        runner = GameRunner(num_episodes=2, env=Board, players=[xplayer, oplayer])
+        runner = GameRunner(num_episodes=1000, env=Board, players=[xplayer, oplayer])
         runner.run()
         episodes = runner.get_generated_episodes()
+        winners = runner.get_winners()
+        counts, values = np.unique_counts(winners)
+        print(
+            "generated episodes winner stats:",
+            list(zip(map(str, counts), map(int, values))),
+        )
 
         # Learn
         logging.info(
@@ -38,11 +45,24 @@ def main():
 
         # compare with random policy
         win_stats = compare_with_random(oplayer, episodes=1000)
-        print(win_stats)
+        print("win stats against random: ", win_stats)
 
     state_coverage, _ = get_state_coverage(oplayer)
     print(
         f"ratio of non-terminal states that has been updated atleast once (state coverage) {state_coverage*100:.2f}%",
+    )
+
+    print("Action score distributions:")
+    print(
+        "\n".join(
+            map(
+                str,
+                sorted(
+                    get_score_distribution_across_actions(oplayer).items(),
+                    key=lambda x: x[1][2],
+                ),
+            )
+        )
     )
 
 
