@@ -7,7 +7,7 @@ from collections import defaultdict
 from typing import List
 
 
-def lets_play(xplayer: Player, oplayer: Player):
+def lets_see_them_play(xplayer: Player, oplayer: Player):
     turn = xplayer
     board = Board()
 
@@ -38,19 +38,18 @@ def lets_play(xplayer: Player, oplayer: Player):
     oplayer.train()
 
 
-def compare_with_random(player: Player, episodes=100):
+def head_to_head(xplayer: Player, oplayer: Player, episodes=1000):
     # random vs random: [D: 12.776, O: 28.654, X: 58.57]
     # rl O (without training, all values are 0.0) vs random X: [D: 5.6, O: 39.66, X: 54.68]
 
-    player.eval()
+    assert (
+        oplayer.mark == "O" and xplayer.mark == "X"
+    ), "Oplayer and Xplayer are not passed correctly"
+
+    oplayer.eval()
+    xplayer.eval()
 
     winners = []
-    if player.mark == "X":
-        oplayer = Player(mark="O", policy_type="random")
-        xplayer = player
-    else:
-        xplayer = Player(mark="X", policy_type="random")
-        oplayer = player
 
     for _ in range(episodes):
         turn = xplayer
@@ -64,7 +63,8 @@ def compare_with_random(player: Player, episodes=100):
         winner = board._winner if board._winner else "D"
         winners.append(winner)
 
-    player.train()
+    oplayer.train()
+    xplayer.train()
 
     values, counts = np.unique_counts(np.array(winners))
     return values.tolist(), np.round(counts / sum(counts) * 100, 2).tolist()

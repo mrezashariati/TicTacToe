@@ -37,8 +37,8 @@ class MonteCarloEstimation:
     actions: List[Action]
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
     discount_factor = 0.99
-    learning_rate = 0.5
-    epsilon = 0.7
+    learning_rate = 0.1
+    epsilon = 0.8
     eval_mode: bool = False
 
     def __post_init__(self, raw_states: List[NDArray[Any]]):

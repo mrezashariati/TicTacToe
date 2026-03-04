@@ -3,9 +3,9 @@ import logging
 from argparse import ArgumentParser
 import numpy as np
 from validation import (
-    compare_with_random,
+    head_to_head,
     get_state_coverage,
-    lets_play,
+    lets_see_them_play,
     get_score_distribution_across_actions,
     get_state_values,
 )
@@ -24,10 +24,10 @@ def main():
     xplayer = Player(mark="X", policy_type="random")
     oplayer = Player(mark="O", policy_type="rl")
 
-    for _ in range(10):
+    for _ in range(2):
         # Generate episodes
         logging.info(f"generating game episodes...")
-        runner = GameRunner(num_episodes=1000, env=Board, players=[xplayer, oplayer])
+        runner = GameRunner(num_episodes=2_000, env=Board, players=[xplayer, oplayer])
         runner.run()
         episodes = runner.get_generated_episodes()
         winners = runner.get_winners()
@@ -44,13 +44,13 @@ def main():
         oplayer.learn(episodes)
 
         # compare with random policy
-        win_stats = compare_with_random(oplayer, episodes=1000)
-        print("win stats against random: ", win_stats)
+        win_stats = head_to_head(xplayer=xplayer, oplayer=oplayer)
+        print("head to head winrate stats:", win_stats)
 
-    state_coverage, _ = get_state_coverage(oplayer)
-    print(
-        f"ratio of non-terminal states that has been updated atleast once (state coverage) {state_coverage*100:.2f}%",
-    )
+    # state_coverage, _ = get_state_coverage(oplayer)
+    # print(
+    #     f"ratio of non-terminal states that has been updated atleast once (state coverage) {state_coverage*100:.2f}%",
+    # )
 
     print("Action score distributions:")
     print(
