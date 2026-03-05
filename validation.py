@@ -4,7 +4,7 @@ from learning import MonteCarloEstimation
 from entities import State
 import numpy as np
 from collections import defaultdict
-from typing import List
+from typing import List, Dict
 
 
 def lets_see_them_play(xplayer: Player, oplayer: Player):
@@ -91,6 +91,7 @@ def get_state_coverage(player: Player, return_sample=False, sample_size=10):
         if Board._mark_to_number[player.mark] != turn:
             continue
 
+        # TODO: the policy type isn't known here. Fix this. Priority: medium
         values = [v[0] for v in p.get_state_values(s)]
         all_zero = np.all(np.array(values) == 0.0)
         if all_zero:
@@ -123,18 +124,21 @@ def get_score_distribution_across_actions(player: Player):
             float(round(np.quantile(action_values[a], 0.25), 2)),
             float(round(np.median(action_values[a]), 2)),
             float(round(np.quantile(action_values[a], 0.75), 2)),
-            float(round(np.mean(action_values[a]), 2)),
+            float(round(np.min(action_values[a]), 2)),
+            float(round(np.max(action_values[a]), 2)),
         )
         for a in action_values.keys()
     }
     return action_stats
 
 
-def get_state_values(player: Player, s: State) -> List[float]:
+def get_state_values(player: Player, s: State) -> Dict[int, float]:
     assert (
         player.policy_type == "rl"
     ), "score distribution across actions is only valid for rl players with state,action value estimations"
 
+    # TODO: the policy type here is not know. Priority: medium
     p = player._policy
-    s = p.find_state(s)
-    return [p.Q_values[(s, a)] for a in p.actions]
+    value_action_list = p.get_state_values(s)
+    value_list = {i: v for i, (v, _) in enumerate(value_action_list)}
+    return value_list

@@ -1,5 +1,6 @@
 .venv/
 __pycache__/
 all_valid_states.pkl
+all_valid_O_states.pkl
 dev.ipynb
 TODO

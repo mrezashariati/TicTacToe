@@ -167,7 +167,11 @@ class Board:
                     continue
                 variations = get_board_variations(new_state)
                 if not np.any(
-                    [np.array_equal(v, arr) for v in variations for arr in states]
+                    [
+                        np.array_equal(v, arr)
+                        for _, v in variations.items()
+                        for arr in states
+                    ]
                 ):
                     states.append(new_state)
 
