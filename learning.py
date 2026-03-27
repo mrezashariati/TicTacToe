@@ -40,9 +40,9 @@ class MonteCarloEstimation:
     # not all actions are valid for a particular state
     actions: List[Action]
     Q_values: Dict[Tuple[State, Action], float] = field(init=False)
-    discount_factor = 0.7
-    learning_rate = 0.4
-    epsilon = 0.6
+    discount_factor: float = field(default=0.8)
+    learning_rate: float = field(default=0.1)
+    epsilon: float = field(default=0.7)
     eval_mode: bool = False
 
     def __post_init__(self, raw_states: List[NDArray[Any]]):
@@ -145,7 +145,7 @@ class MonteCarloEstimation:
         return list(zip(values, actions_transformed))
 
     def __call__(self, state: State) -> Action:
-        """returns the best action based on the Q-values stored with 1-epsilon probability"""
+        """returns the best action based on the Q-values stored with epsilon probability"""
         possible_actions = [a for a in self.actions if state.s.reshape(-1)[a.pos] == 0]
 
         # epsilon-greedy. Take random action with 1-epsilon prob if in train mode

@@ -1,10 +1,10 @@
 import logging
 from game_env import Board, Player
-from learning import MonteCarloEstimation
 from entities import State
 import numpy as np
 from collections import defaultdict
-from typing import List, Dict
+from typing import Dict
+import pickle
 
 
 def lets_see_them_play(xplayer: Player, oplayer: Player):
@@ -142,3 +142,45 @@ def get_state_values(player: Player, s: State) -> Dict[int, float]:
     value_action_list = p.get_state_values(s)
     value_list = {i: v for i, (v, _) in enumerate(value_action_list)}
     return value_list
+
+
+def run_evaluations(oplayer: Player, n_sample_states=5, n_manual_head_to_head=5):
+    # Runs this evaluation list:
+    # state coverage
+    # Action score distribution over all states
+    # Sample state, action values
+    # Head to Head with Manual policy
+
+    # State Coverage
+    state_coverage, _ = get_state_coverage(oplayer, return_sample=False)
+    logging.info(
+        f"ratio of non-terminal states that has been updated atleast once (state coverage) {state_coverage*100:.2f}%",
+    )
+
+    # Action score distribution
+    logging.info("Action score distributions 0.25q, 0.5q, 0.75q, min, max:")
+    logging.info(
+        "\n".join(
+            map(
+                str,
+                sorted(
+                    get_score_distribution_across_actions(oplayer).items(),
+                    key=lambda x: x[1][2],
+                ),
+            )
+        )
+    )
+
+    # See some State, Action values
+    with open("./all_valid_O_states.pkl", "rb") as f:
+        all_valid_O_states = pickle.load(f)
+
+    for s in np.random.choice(all_valid_O_states, size=n_sample_states, replace=False):
+        logging.info(s)
+        logging.info(get_state_values(player=oplayer, s=s))
+
+    # Head to Head with Manual policy
+    for _ in range(n_manual_head_to_head):
+        lets_see_them_play(
+            xplayer=Player(mark="X", policy_type="manual"), oplayer=oplayer
+        )

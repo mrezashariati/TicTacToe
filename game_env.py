@@ -9,14 +9,14 @@ from learning import MonteCarloEstimation, Reward, ReplayBuffer
 from utils import get_board_variations
 from entities import State, Action
 import logging
-import random
-
+from pathlib import Path
 
 @dataclass
 class Player:
     mark: Literal["O", "X"]
     policy_type: Literal["manual", "rl", "random", "gfi"]
     possible_actions: List[Action] = field(init=False)
+    policy_config: dict = field(default_factory=dict)
 
     # The policy is a function, which takes in a game state and outputs an action.
     # The action here is a position in the board on which the player wants to put his/her mark.
@@ -77,6 +77,7 @@ class Player:
                 return MonteCarloEstimation(
                     raw_states=Board.load_all_valid_states(),
                     actions=self.possible_actions,
+                    **self.policy_config,
                 )
             case "gfi":
                 return go_for_it_policy
@@ -109,6 +110,20 @@ class Player:
         # only the players with RL policy can enable train mode
         if self.policy_type == "rl":
             self._policy.train()
+
+    def save(self, path: str):
+        os.makedirs(Path(path).parent, exist_ok=True)
+        with open(path, "wb") as f:
+            pickle.dump(self, f)
+
+        logging.info(f"Player saved to {path}")
+
+    @staticmethod
+    def load(path):
+        # Loads a player object from the path
+        with open(path, "rb") as f:
+            player = pickle.load(f)
+        return player
 
 
 @dataclass
@@ -144,6 +159,8 @@ class Board:
             rewards["X"], rewards["O"] = Reward(1.0), Reward(-1.0)
         elif f and w == "O":
             rewards["O"], rewards["X"] = Reward(1.0), Reward(-1.0)
+        elif f and not w:
+            rewards["O"], rewards["X"] = Reward(-1.0), Reward(-1.0)
 
         return rewards
 
