@@ -39,8 +39,6 @@ def lets_see_them_play(xplayer: Player, oplayer: Player):
 
 
 def head_to_head(xplayer: Player, oplayer: Player, episodes=1000):
-    # random vs random: [D: 12.776, O: 28.654, X: 58.57]
-    # rl O (without training, all values are 0.0) vs random X: [D: 5.6, O: 39.66, X: 54.68]
 
     assert (
         oplayer.mark == "O" and xplayer.mark == "X"
@@ -68,6 +66,10 @@ def head_to_head(xplayer: Player, oplayer: Player, episodes=1000):
 
     values, counts = np.unique_counts(np.array(winners))
     return values.tolist(), np.round(counts / sum(counts) * 100, 2).tolist()
+
+
+def see_win_lose_patterns(boards: list[Board], outcomes):
+    pass
 
 
 def get_state_coverage(player: Player, return_sample=False, sample_size=10):
@@ -146,10 +148,18 @@ def get_state_values(player: Player, s: State) -> Dict[int, float]:
 
 def run_evaluations(oplayer: Player, n_sample_states=5, n_manual_head_to_head=5):
     # Runs this evaluation list:
+    # Winrate against Random Policy player
     # state coverage
     # Action score distribution over all states
     # Sample state, action values
     # Head to Head with Manual policy
+
+    # Against Random Policy Player
+    win_stats = head_to_head(
+        xplayer=Player(mark="X", policy_type="random"), oplayer=oplayer, episodes=3000
+    )
+    oplayer_winstats = dict(zip(*win_stats))
+    logging.info(f"Oplayer winrate against Random Policy Player: {oplayer_winstats}")
 
     # State Coverage
     state_coverage, _ = get_state_coverage(oplayer, return_sample=False)

@@ -30,15 +30,6 @@ def main():
 
     if not eval:
         # Else, train, save and then validate
-        # xplayer = Player(
-        #     mark="X",
-        #     policy_type="rl",
-        #     policy_config={
-        #         "learning_rate": 0.5,
-        #         "discount_factor": 0.9,
-        #         "epsilon": 0.6,
-        #     },
-        # )
         xplayer = Player(
             mark="X",
             policy_type="random",
@@ -47,15 +38,18 @@ def main():
             mark="O",
             policy_type="rl",
             policy_config={
-                "learning_rate": 0.5,
-                "discount_factor": 0.5,
+                "learning_rate": 0.1,
+                "discount_factor": 0.99,
                 "epsilon": 0.6,
+                "sample_action": False,
             },
         )
 
         best_oplayer = oplayer
         best_oplayer_winrate = 0
-        for i in range(12_000):
+        iterations = 6000
+        logging.info(f"started training the agent for {iterations} iters...")
+        for i in range(iterations):
             # Generate episodes
             # logging.info(f"generating game episodes...")
             runner = GameRunner(num_episodes=1, env=Board, players=[xplayer, oplayer])
@@ -88,7 +82,7 @@ def main():
 
         # Save the player
         best_oplayer.save(
-            f"./players/oplayer/{datetime.now().strftime('%d_%m_%Y_%H:%M%:%S')}"
+            f"./players/oplayer/{datetime.now().strftime('%d_%m_%Y_%H:%M%:%S')}_{best_oplayer_winrate:.2f}"
         )
 
         # Evaluation

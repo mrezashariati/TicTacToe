@@ -4,7 +4,6 @@ from dataclasses import dataclass, field, InitVar
 from typing import List, Tuple, Dict, Any
 import numpy as np
 from numpy.typing import NDArray
-import random
 from collections import defaultdict
 from utils import (
     get_board_variations,
@@ -12,6 +11,9 @@ from utils import (
     get_position_transformed,
 )
 from entities import State, Action
+import scipy
+
+import random
 
 # np.random.seed(42)
 # random.seed(42)
@@ -44,6 +46,7 @@ class MonteCarloEstimation:
     learning_rate: float = field(default=0.1)
     epsilon: float = field(default=0.7)
     eval_mode: bool = False
+    sample_action: bool = True
 
     def __post_init__(self, raw_states: List[NDArray[Any]]):
         self.states = defaultdict(list)
@@ -163,19 +166,39 @@ class MonteCarloEstimation:
         possible_actions_canonical = [
             a for a in self.actions if canonical_state.s.reshape(-1)[a.pos] == 0
         ]
-        best_action_value = -float("inf")
-        best_action_canonical = None
-        for a in possible_actions_canonical:
-            if self.Q_values[(canonical_state, a)] > best_action_value:
-                best_action_canonical = a
-                best_action_value = self.Q_values[(canonical_state, a)]
 
-        assert best_action_canonical, "something wrong here!"
+        if not self.sample_action:
+            # find the best action if not 'sample_action'
+            best_action_value = -float("inf")
+            best_action_canonical = None
+            for a in possible_actions_canonical:
+                if self.Q_values[(canonical_state, a)] > best_action_value:
+                    best_action_canonical = a
+                    best_action_value = self.Q_values[(canonical_state, a)]
+
+            assert best_action_canonical, "something wrong here!"
+        else:
+            # sample action with their probs directly correlated with their scores.
+            value_list = [
+                self.Q_values[canonical_state, a] for a in possible_actions_canonical
+            ]
+            # apply softmax
+            prob_list = scipy.special.softmax(value_list)
+            # sample
+            best_action_canonical = np.random.choice(
+                np.array(possible_actions_canonical, dtype="object"),
+                p=prob_list,
+                size=1,
+            )[0]
+            assert best_action_canonical, "something wrong here!"
+
         # best_action corresponds to the canonical state. We need the action corresponding to the original state
         # we go from canonical action to board action
         best_pos_original = get_position_inverse_transformed(
             transformation, best_action_canonical.pos
         )
+
+        # Take the Action instance rather than the position
         l = [a for a in possible_actions if a.pos == best_pos_original]
         assert len(l) == 1
         best_action = l[0]

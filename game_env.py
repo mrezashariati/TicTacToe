@@ -11,6 +11,7 @@ from entities import State, Action
 import logging
 from pathlib import Path
 
+
 @dataclass
 class Player:
     mark: Literal["O", "X"]
@@ -156,11 +157,11 @@ class Board:
 
         rewards = {"O": Reward(0.0), "X": Reward(0.0)}
         if f and w == "X":
-            rewards["X"], rewards["O"] = Reward(1.0), Reward(-1.0)
+            rewards["X"], rewards["O"] = Reward(1), Reward(-1)
         elif f and w == "O":
-            rewards["O"], rewards["X"] = Reward(1.0), Reward(-1.0)
+            rewards["O"], rewards["X"] = Reward(1), Reward(-1)
         elif f and not w:
-            rewards["O"], rewards["X"] = Reward(-1.0), Reward(-1.0)
+            rewards["O"], rewards["X"] = Reward(0), Reward(0)
 
         return rewards
 
